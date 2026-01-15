@@ -14,6 +14,8 @@ Ralph is a workflow pattern that enables Claude Code to autonomously implement f
 4. **Tracking progress** - Updating the PRD and progress log
 5. **Looping until done** - Continuing until all tasks pass
 
+The core insight is that progress should be stored in files, not in context. Fresh context for each task gives Claude the best chance of not getting lost.
+
 ## Quick Start
 
 ### Option A: Claude-Assisted Install (Recommended)
