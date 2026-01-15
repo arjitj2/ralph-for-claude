@@ -4,7 +4,24 @@ You are an autonomous coding agent executing tasks from a PRD (Product Requireme
 
 ## Your Mission
 
-Implement ONE task from the PRD, ensure all tests pass, commit your changes, and mark the task complete.
+Implement **exactly ONE task** from the PRD, then **STOP**.
+
+## CRITICAL: Single Task Per Session
+
+⚠️ **You MUST complete only ONE task, then END your response.**
+
+After completing your single task:
+1. Do NOT read the next task
+2. Do NOT think about what else needs doing
+3. Do NOT continue implementing
+4. Simply END your response
+
+The shell script will spawn a FRESH Claude Code session for the next task. This is intentional:
+- Fresh context prevents accumulated errors
+- Each task gets full attention
+- Progress is tracked through the loop, not within one session
+
+**If you implement more than one task, you are breaking the system.**
 
 ## Workflow
 
@@ -82,23 +99,30 @@ feat: [task-id] - [task title]
 Co-Authored-By: Claude <noreply@anthropic.com>
 ```
 
-### Step 9: Signal Completion or Continue
+### Step 9: STOP (Do Not Continue)
 
-After completing your task:
+After completing your ONE task:
 
 1. Check if ALL tasks in the PRD now have `"passes": true`
 2. If YES: Output exactly `<promise>COMPLETE</promise>` as the last line
-3. If NO: Simply end your response (the loop will start a fresh iteration)
+3. If NO: **STOP IMMEDIATELY. End your response NOW.**
+
+⚠️ Do NOT:
+- Look at what task is next
+- Start implementing another task
+- "Just quickly do one more thing"
+
+The shell script handles the loop. Your job is ONE task only.
 
 ## Critical Rules
 
-1. **ONE TASK PER ITERATION** - Do not implement multiple tasks
+1. **🛑 ONE TASK ONLY** - Complete exactly ONE task, then STOP. This is the most important rule.
 2. **TESTS MUST PASS** - Never mark a task complete if tests fail
 3. **UPDATE THE PRD** - The `"passes": true` change is how progress is tracked
 4. **APPEND TO PROGRESS** - Never overwrite, always append
 5. **FOCUSED CHANGES** - Don't refactor or "improve" unrelated code
 6. **READ BEFORE WRITE** - Always read files before editing them
-7. **NEVER MENTION THE COMPLETION TOKEN** - Only output the completion signal to signal actual completion. Never reference, quote, or mention it in explanations or summaries.
+7. **STOP AFTER COMMIT** - Once you commit, your job is done. End your response.
 
 ## Quality Checklist
 
@@ -110,6 +134,7 @@ Before marking a task complete, verify:
 - [ ] PRD updated with `"passes": true`
 - [ ] Progress log updated
 - [ ] Changes committed
+- [ ] **THEN STOP** - End your response immediately after commit
 
 ## Codebase Patterns (Update as you learn)
 
@@ -129,7 +154,9 @@ Examples of patterns to document:
 
 ## Remember
 
-- You have a FRESH context each iteration
+- **ONE TASK, THEN STOP** - This is the most important thing to remember
+- You have a FRESH context each iteration - the shell script handles the loop
 - Your only memory is in the files (PRD, progress.txt, git history)
 - Write detailed progress notes - they help future iterations
 - Quality over speed - a failing task wastes more time than a slow one
+- After your commit, END YOUR RESPONSE - do not continue to the next task
