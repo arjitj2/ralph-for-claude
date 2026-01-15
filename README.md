@@ -132,16 +132,9 @@ This installs the `/generate-prd` and `/convert-prd-to-json` commands to your `~
 
 ## Tips for Writing Good PRDs
 
-See [docs/WRITING-PRDS.md](docs/WRITING-PRDS.md) for best practices.
-
-Key points:
 - **Right-size tasks**: Each task should be completable in one session
 - **Clear acceptance criteria**: Specific, verifiable statements
 - **Proper dependencies**: Schema → Backend → UI → Tests
-
-## Troubleshooting
-
-See [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) for common issues.
 
 ## License
 
