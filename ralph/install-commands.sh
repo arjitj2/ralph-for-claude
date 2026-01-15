@@ -30,17 +30,17 @@ else
     exit 1
 fi
 
-# Copy command files
+# Create symlinks to command files (so updates propagate automatically)
 for cmd in "$RALPH_COMMANDS_DIR"/*.md; do
     if [ -f "$cmd" ]; then
         filename=$(basename "$cmd")
-        cp "$cmd" "$COMMANDS_DIR/$filename"
-        echo -e "  ${GREEN}+${NC} Installed: $filename"
+        ln -sf "$cmd" "$COMMANDS_DIR/$filename"
+        echo -e "  ${GREEN}→${NC} Linked: $filename"
     fi
 done
 
 echo ""
-echo -e "${GREEN}Done!${NC} Commands installed to $COMMANDS_DIR"
+echo -e "${GREEN}Done!${NC} Commands symlinked to $COMMANDS_DIR"
 echo ""
 echo "Available commands in Claude Code:"
 echo "  /generate-prd         - Create a new PRD through interactive questions"

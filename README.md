@@ -43,7 +43,7 @@ Claude will read this repo's `CLAUDE.md` and:
    cp -r ralph-for-claude/ralph your-project/
    ```
 
-3. Install commands:
+3. Install commands (creates symlinks):
    ```bash
    ./your-project/ralph/install-commands.sh
    ```
@@ -128,7 +128,7 @@ When you clone a project that already has `ralph/` set up:
 ./ralph/install-commands.sh
 ```
 
-This installs the `/generate-prd` and `/convert-prd-to-json` commands to your `~/.claude/commands/`.
+This creates **symlinks** from `~/.claude/commands/` to the repo's command files. Edits to commands in the source repo automatically apply everywhere.
 
 ## Tips for Writing Good PRDs
 

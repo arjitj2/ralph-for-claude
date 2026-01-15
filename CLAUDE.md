@@ -82,12 +82,17 @@ Example for TypeScript/Node:
 
 ## 5. Install Commands
 
-Copy the commands to `~/.claude/commands/`:
+Create symlinks (not copies) to `~/.claude/commands/` so updates propagate automatically:
 
 ```bash
 mkdir -p ~/.claude/commands
-cp commands/generate-prd.md ~/.claude/commands/
-cp commands/convert-prd-to-json.md ~/.claude/commands/
+ln -sf "$(pwd)/commands/generate-prd.md" ~/.claude/commands/
+ln -sf "$(pwd)/commands/convert-prd-to-json.md" ~/.claude/commands/
+```
+
+Or run the install script which does this automatically:
+```bash
+./ralph/install-commands.sh
 ```
 
 ## 6. Create tasks/ Directory
