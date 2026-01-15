@@ -38,9 +38,9 @@ Order tasks based on logical dependencies:
 3. UI components depend on backend services
 4. Tests depend on the features they test
 
-### Step 4: Generate prd.json
+### Step 4: Generate the JSON File
 
-Create the JSON file with this structure:
+Create the JSON file (same name as input, with `.json` extension) with this structure:
 
 ```json
 {
