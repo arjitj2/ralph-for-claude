@@ -1,0 +1,22 @@
+# Ralph Progress Log
+Feature: (will be updated by setup.sh)
+Started: (will be updated by setup.sh)
+
+## Codebase Patterns
+
+### Testing
+- Use pytest for testing: `pytest` or `python -m pytest`
+- Test files in `tests/` directory with `test_*.py` naming
+- Use fixtures for setup/teardown
+
+### Project Structure
+- Source: `src/` or package name directory
+- Tests: `tests/`
+- Config: `pyproject.toml` or `setup.py`
+
+### Commit Style
+- Use: `git commit -m "feat: [task-id] - [title]"`
+- Include Co-Authored-By for Claude
+
+---
+

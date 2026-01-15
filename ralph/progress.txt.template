@@ -1,0 +1,14 @@
+# Ralph Progress Log
+Feature: (will be updated by setup.sh)
+Started: (will be updated by setup.sh)
+
+## Codebase Patterns
+
+{{CODEBASE_PATTERNS}}
+
+### Commit Style
+- Use: `git commit -m "feat: [task-id] - [title]"`
+- Include Co-Authored-By for Claude
+
+---
+
