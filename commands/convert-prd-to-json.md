@@ -113,7 +113,9 @@ NOT:
 
 ## Output
 
-1. Write `prd.json` to the project root (or specified location)
+1. Write the JSON file to the **same directory** as the input markdown file, with the **same base name** but `.json` extension
+   - Example: `tasks/prd-feature-name.md` → `tasks/prd-feature-name.json`
+   - Do NOT default to `prd.json` - always match the source filename
 2. Display a summary showing:
    - Number of tasks created
    - Dependency graph (text format)
