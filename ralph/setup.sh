@@ -39,9 +39,32 @@ fi
 
 NEW_PRD="$1"
 
+# Check if user passed a .md file instead of .json
+if [[ "$NEW_PRD" == *.md ]]; then
+  JSON_FILE="${NEW_PRD%.md}.json"
+  if [ -f "$JSON_FILE" ]; then
+    echo -e "${YELLOW}Note: You passed a .md file. Using corresponding .json file instead.${NC}"
+    echo -e "  ${BLUE}$NEW_PRD${NC} -> ${GREEN}$JSON_FILE${NC}"
+    echo ""
+    NEW_PRD="$JSON_FILE"
+  else
+    echo -e "${RED}Error: You passed a .md file, but no corresponding .json file exists.${NC}"
+    echo ""
+    echo "Run /convert-prd-to-json first to create the JSON file:"
+    echo -e "  ${BLUE}/convert-prd-to-json $NEW_PRD${NC}"
+    exit 1
+  fi
+fi
+
 # Check if new PRD exists
 if [ ! -f "$NEW_PRD" ]; then
   echo -e "${RED}Error: PRD file not found: $NEW_PRD${NC}"
+  exit 1
+fi
+
+# Validate it's actually JSON
+if ! jq empty "$NEW_PRD" 2>/dev/null; then
+  echo -e "${RED}Error: File is not valid JSON: $NEW_PRD${NC}"
   exit 1
 fi
 
