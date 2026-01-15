@@ -17,47 +17,53 @@ First, fetch this repository. Then copy the `ralph/` directory to the user's pro
 
 ```
 ralph/
-├── ralph.sh                 # Copy as-is
-├── setup.sh                 # Copy as-is
-├── install-commands.sh      # Copy as-is
-├── prompt.md.template       # Customize → prompt.md
-└── progress.txt.template    # Customize → progress.txt.template
+├── ralph.sh                 # Symlink to source
+├── setup.sh                 # Symlink to source
+├── install-commands.sh      # Symlink to source
+├── prompt.md                # Symlink to source (contains {{TEST_COMMAND}} placeholder)
+├── ralph.config.template    # Copy and customize → ralph.config
+└── progress.txt.template    # Copy as-is
 ```
 
-## 3. Customize prompt.md
+For symlinked files, create symlinks to the source repo so updates propagate automatically:
+```bash
+ln -sf /path/to/ralph-for-claude/ralph/ralph.sh ralph/
+ln -sf /path/to/ralph-for-claude/ralph/setup.sh ralph/
+ln -sf /path/to/ralph-for-claude/ralph/prompt.md ralph/
+```
 
-Copy `ralph/prompt.md.template` to `ralph/prompt.md` and replace the `{{TEST_COMMAND}}` placeholder with the appropriate test command:
+## 3. Create ralph.config
+
+Copy `ralph/ralph.config.template` to `ralph/ralph.config` and set the `TEST_COMMAND` variable with the appropriate test command for the project:
 
 **TypeScript/Node:**
 ```bash
-npm test
-npm run build  # if applicable
-npm run lint   # if applicable
+TEST_COMMAND="npm test"
 ```
 
 **Swift/iOS:**
 ```bash
-xcodebuild test -scheme YourScheme -destination 'platform=iOS Simulator,name=iPhone 16'
+TEST_COMMAND="xcodebuild test -scheme YourScheme -destination 'platform=iOS Simulator,name=iPhone 16'"
 ```
 
 **Python:**
 ```bash
-pytest
+TEST_COMMAND="pytest"
 ```
 
 **Rust:**
 ```bash
-cargo test
-cargo build
+TEST_COMMAND="cargo test && cargo build"
 ```
 
 **Go:**
 ```bash
-go test ./...
-go build
+TEST_COMMAND="go test ./... && go build"
 ```
 
 If you can detect the scheme name or specific test configuration from the project, use it.
+
+The `{{TEST_COMMAND}}` placeholder in prompt.md is substituted at runtime by ralph.sh.
 
 ## 4. Customize progress.txt.template
 

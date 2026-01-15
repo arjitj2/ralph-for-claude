@@ -14,6 +14,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PRD_FILE="$SCRIPT_DIR/prd.json"
 PROGRESS_FILE="$SCRIPT_DIR/progress.txt"
 PROMPT_FILE="$SCRIPT_DIR/prompt.md"
+CONFIG_FILE="$SCRIPT_DIR/ralph.config"
 
 # Colors for output
 RED='\033[0;31m'
@@ -22,6 +23,18 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 GRAY='\033[0;90m'
 NC='\033[0m' # No Color
+
+# Load project config (for TEST_COMMAND substitution)
+load_config() {
+    if [ -f "$CONFIG_FILE" ]; then
+        source "$CONFIG_FILE"
+    else
+        echo -e "${YELLOW}Warning: ralph.config not found. Using default test command.${NC}"
+        TEST_COMMAND="echo 'No test command configured'"
+    fi
+}
+
+load_config
 
 # Function to format duration
 format_duration() {
@@ -174,8 +187,9 @@ for i in $(seq 1 $MAX_ITERATIONS); do
   echo -e "Task: ${YELLOW}[$NEXT_TASK_ID]${NC} $NEXT_TASK_TITLE"
   echo ""
 
-  # Build the prompt with file paths
-  FULL_PROMPT="$(cat "$PROMPT_FILE")
+  # Build the prompt with file paths and substitute TEST_COMMAND
+  PROMPT_CONTENT="$(cat "$PROMPT_FILE" | sed "s|{{TEST_COMMAND}}|$TEST_COMMAND|g")"
+  FULL_PROMPT="$PROMPT_CONTENT
 
 ---
 PRD_FILE_PATH: $PRD_FILE

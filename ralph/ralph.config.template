@@ -1,0 +1,10 @@
+# Ralph project configuration
+# Copy this to ralph.config and customize for your project
+
+# Test command to run after each task
+# Examples:
+#   npm test
+#   pytest
+#   cargo test
+#   xcodebuild test -scheme YourScheme -destination 'platform=iOS Simulator,name=iPhone 16'
+TEST_COMMAND="echo 'No test command configured'"

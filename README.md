@@ -48,7 +48,11 @@ Claude will read this repo's `CLAUDE.md` and:
    ./your-project/ralph/install-commands.sh
    ```
 
-4. Edit `ralph/prompt.md` with your project's test command
+4. Create `ralph/ralph.config` with your test command:
+   ```bash
+   cp ralph/ralph.config.template ralph/ralph.config
+   # Edit ralph.config and set TEST_COMMAND for your project
+   ```
 
 ## Workflow
 
@@ -108,9 +112,10 @@ After setup, your project will have:
 ```
 your-project/
 ├── ralph/
-│   ├── ralph.sh              # Main loop script
-│   ├── setup.sh              # Initialize new PRD
-│   ├── prompt.md             # Claude instructions
+│   ├── ralph.sh              # Main loop script (symlink to source)
+│   ├── setup.sh              # Initialize new PRD (symlink to source)
+│   ├── prompt.md             # Claude instructions (symlink to source)
+│   ├── ralph.config          # Project-specific test command
 │   ├── progress.txt          # Iteration logs
 │   ├── prd.json              # Current PRD (active)
 │   └── archive/              # Previous runs
