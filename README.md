@@ -46,7 +46,7 @@ Claude will read this repo's `CLAUDE.md` and:
    ./your-project/ralph/install-commands.sh
    ```
 
-4. Copy and customize a template from `examples/` to `your-project/ralph/prompt.md`
+4. Edit `ralph/prompt.md` with your project's test command
 
 ## Workflow
 
@@ -127,16 +127,6 @@ When you clone a project that already has `ralph/` set up:
 ```
 
 This installs the `/generate-prd` and `/convert-prd-to-json` commands to your `~/.claude/commands/`.
-
-## Examples
-
-Pre-configured templates are available in `examples/`:
-
-- `swift-ios/` - Swift Testing, xcodebuild
-- `typescript-node/` - Jest, npm
-- `python/` - pytest
-
-Copy the appropriate `prompt.md` and `progress.txt.template` to your `ralph/` directory.
 
 ## Tips for Writing Good PRDs
 
