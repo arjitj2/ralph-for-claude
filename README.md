@@ -27,32 +27,41 @@ Set up Ralph from github.com/arjitj2/ralph-for-claude in my project
 ```
 
 Claude will read this repo's `CLAUDE.md` and:
-1. Copy `ralph/` to your project
-2. Install commands to `~/.claude/commands/`
-3. Customize templates for your project type
+1. Clone ralph-for-claude repo locally (if not already present)
+2. Create symlinks from your project's `ralph/` to the source (for automatic updates)
+3. Create `ralph.config` with your project's test command
+4. Install command symlinks to `~/.claude/commands/`
 
 ### Option B: Manual Setup
 
-1. Clone this repo:
+1. Clone this repo (keep it - you'll symlink to it):
    ```bash
-   git clone https://github.com/arjitj2/ralph-for-claude.git
+   git clone https://github.com/arjitj2/ralph-for-claude.git ~/repos/ralph-for-claude
    ```
 
-2. Copy `ralph/` to your project:
+2. Create `ralph/` directory in your project and symlink core files:
    ```bash
-   cp -r ralph-for-claude/ralph your-project/
+   mkdir -p your-project/ralph
+   cd your-project/ralph
+   ln -s ~/repos/ralph-for-claude/ralph/ralph.sh .
+   ln -s ~/repos/ralph-for-claude/ralph/setup.sh .
+   ln -s ~/repos/ralph-for-claude/ralph/prompt.md .
+   ln -s ~/repos/ralph-for-claude/ralph/progress.txt.template .
    ```
 
-3. Install commands (creates symlinks):
+3. Install commands (creates symlinks to `~/.claude/commands/`):
    ```bash
-   ./your-project/ralph/install-commands.sh
+   ~/repos/ralph-for-claude/ralph/install-commands.sh
    ```
 
 4. Create `ralph/ralph.config` with your test command:
    ```bash
-   cp ralph/ralph.config.template ralph/ralph.config
-   # Edit ralph.config and set TEST_COMMAND for your project
+   cat > ralph.config << 'EOF'
+   TEST_COMMAND="npm test"  # Replace with your project's test command
+   EOF
    ```
+
+**Why symlinks?** Updates to ralph-for-claude automatically apply to all your projects. Only `ralph.config` is project-specific.
 
 ## Workflow
 

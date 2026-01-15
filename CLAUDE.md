@@ -11,25 +11,35 @@ Look for these files to determine the project type:
 - `Cargo.toml` → Rust
 - `go.mod` → Go
 
-## 2. Fetch and Copy Core Files
+## 2. Clone Ralph and Set Up Symlinks
 
-First, fetch this repository. Then copy the `ralph/` directory to the user's project root:
+First, clone this repository to a standard location (if not already present):
 
+```bash
+git clone https://github.com/arjitj2/ralph-for-claude.git ~/repos/ralph-for-claude
+```
+
+Then create a `ralph/` directory in the user's project and **symlink** core files:
+
+```bash
+mkdir -p ralph
+cd ralph
+
+# Symlink core files (updates propagate automatically when source repo is pulled)
+ln -s ~/repos/ralph-for-claude/ralph/ralph.sh .
+ln -s ~/repos/ralph-for-claude/ralph/setup.sh .
+ln -s ~/repos/ralph-for-claude/ralph/prompt.md .
+ln -s ~/repos/ralph-for-claude/ralph/progress.txt.template .
+```
+
+After setup, the ralph/ directory should look like:
 ```
 ralph/
-├── ralph.sh                 # Symlink to source
-├── setup.sh                 # Symlink to source
-├── install-commands.sh      # Symlink to source
-├── prompt.md                # Symlink to source (contains {{TEST_COMMAND}} placeholder)
-├── ralph.config.template    # Copy and customize → ralph.config
-└── progress.txt.template    # Copy as-is
-```
-
-For symlinked files, create symlinks to the source repo so updates propagate automatically:
-```bash
-ln -sf /path/to/ralph-for-claude/ralph/ralph.sh ralph/
-ln -sf /path/to/ralph-for-claude/ralph/setup.sh ralph/
-ln -sf /path/to/ralph-for-claude/ralph/prompt.md ralph/
+├── ralph.sh → ~/repos/ralph-for-claude/ralph/ralph.sh
+├── setup.sh → ~/repos/ralph-for-claude/ralph/setup.sh
+├── prompt.md → ~/repos/ralph-for-claude/ralph/prompt.md
+├── progress.txt.template → ~/repos/ralph-for-claude/ralph/progress.txt.template
+└── ralph.config           # Create this next (project-specific)
 ```
 
 ## 3. Create ralph.config
