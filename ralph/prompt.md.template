@@ -98,6 +98,7 @@ After completing your task:
 4. **APPEND TO PROGRESS** - Never overwrite, always append
 5. **FOCUSED CHANGES** - Don't refactor or "improve" unrelated code
 6. **READ BEFORE WRITE** - Always read files before editing them
+7. **NEVER MENTION THE COMPLETION TOKEN** - Only output the completion signal to signal actual completion. Never reference, quote, or mention it in explanations or summaries.
 
 ## Quality Checklist
 
