@@ -96,6 +96,15 @@ Brief description of the feature and the problem it solves.
 
 ## Key Requirements
 
+### No Open Questions Unless Explicitly Allowed
+
+**CRITICAL**: The final PRD must NOT contain an "Open Questions" section unless the user explicitly says it's okay to leave questions unresolved.
+
+- Continue asking clarifying questions until ALL potential open questions are addressed
+- If you identify uncertainties during PRD generation, ask the user before including them as open questions
+- Only include Section 8 (Open Questions) if the user explicitly approves having unresolved questions
+- If the user says "it's okay to have open questions" or similar, you may include them
+
 ### Story IDs Must Be Sequential
 
 Use the format `US-XXX` where XXX is a zero-padded number:
