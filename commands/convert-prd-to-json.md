@@ -124,7 +124,7 @@ NOT:
 ## Example Output Summary
 
 ```
-Created prd.json with 6 tasks:
+Created tasks/prd-user-auth.json with 6 tasks:
 
 Dependency Graph:
   US-001 Add User Model (no deps)
@@ -134,14 +134,15 @@ Dependency Graph:
           └── US-005 Add Auth Tests (depends on: US-003, US-004)
               └── US-006 Add E2E Tests (depends on: US-005)
 
-Ready for autonomous execution with Ralph or similar tools.
+Ready for autonomous execution with Ralph.
 ```
 
 ## Integration with Ralph
 
-After creating `prd.json`, the user can run Ralph:
+After creating the JSON file, initialize and run Ralph:
 ```bash
-./scripts/ralph/ralph.sh
+./ralph/setup.sh tasks/prd-your-feature.json  # Initialize with your PRD
+./ralph/ralph.sh                               # Start autonomous execution
 ```
 
 Ralph will:
