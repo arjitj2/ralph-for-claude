@@ -27,7 +27,6 @@ cd ralph
 
 # Symlink core files (updates propagate automatically when source repo is pulled)
 ln -s ~/repos/ralph-for-claude/ralph/ralph.sh .
-ln -s ~/repos/ralph-for-claude/ralph/setup.sh .
 ln -s ~/repos/ralph-for-claude/ralph/prompt.md .
 ln -s ~/repos/ralph-for-claude/ralph/progress.txt.template .
 ```
@@ -36,7 +35,6 @@ After setup, the ralph/ directory should look like:
 ```
 ralph/
 ├── ralph.sh → ~/repos/ralph-for-claude/ralph/ralph.sh
-├── setup.sh → ~/repos/ralph-for-claude/ralph/setup.sh
 ├── prompt.md → ~/repos/ralph-for-claude/ralph/prompt.md
 ├── progress.txt.template → ~/repos/ralph-for-claude/ralph/progress.txt.template
 └── ralph.config           # Create this next (project-specific)
@@ -122,7 +120,7 @@ This is where PRDs will be stored.
 ## 7. Make Scripts Executable
 
 ```bash
-chmod +x ralph/ralph.sh ralph/setup.sh ralph/install-commands.sh
+chmod +x ralph/ralph.sh ralph/install-commands.sh
 ```
 
 ## 8. Print Next Steps
@@ -135,8 +133,7 @@ Ralph is set up in your project!
 Next steps:
 1. Use /generate-prd to create a PRD for your feature
 2. Use /convert-prd-to-json to convert it to JSON
-3. Run ./ralph/setup.sh tasks/your-prd.json to initialize
-4. Run ./ralph/ralph.sh to start autonomous development
+3. Run ./ralph/ralph.sh tasks/your-prd.json to start autonomous development
 
 The /generate-prd and /convert-prd-to-json commands are now available.
 ```

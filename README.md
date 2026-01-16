@@ -44,7 +44,6 @@ Claude will read this repo's `CLAUDE.md` and:
    mkdir -p your-project/ralph
    cd your-project/ralph
    ln -s ~/repos/ralph-for-claude/ralph/ralph.sh .
-   ln -s ~/repos/ralph-for-claude/ralph/setup.sh .
    ln -s ~/repos/ralph-for-claude/ralph/prompt.md .
    ln -s ~/repos/ralph-for-claude/ralph/progress.txt.template .
    ```
@@ -85,34 +84,55 @@ Use the `/convert-prd-to-json` command:
 
 This creates `tasks/prd-your-feature.json` with structured tasks.
 
-### 3. Set Up Ralph
+### 3. Run Ralph
 
 ```bash
-./ralph/setup.sh tasks/prd-your-feature.json
+./ralph/ralph.sh tasks/prd-your-feature.json
 ```
 
-This:
-- Archives any previous PRD run
-- Copies your PRD to `ralph/prd.json`
-- Initializes `ralph/progress.txt`
-
-### 4. Run Ralph
-
-```bash
-./ralph/ralph.sh
-```
-
-Ralph will:
+That's it! Ralph will:
+- Validate the PRD
+- Create an archive folder for this run
 - Find the first incomplete task
 - Start a Claude Code session to implement it
 - Track progress and loop until done
 
+### 4. Resume If Interrupted
+
+If you stop Ralph mid-run, just run the same command again:
+
+```bash
+./ralph/ralph.sh tasks/prd-your-feature.json
+```
+
+Ralph automatically detects incomplete runs and resumes where it left off.
+
 ### 5. Monitor Progress
 
 Watch the terminal output, or check:
-- `ralph/prd.json` - Task completion status
-- `ralph/progress.txt` - Detailed iteration logs
+- `ralph/archive/<timestamp>-<feature>/prd.json` - Task completion status
+- `ralph/archive/<timestamp>-<feature>/progress.txt` - Detailed iteration logs
 - Git history - Commits per task
+
+## Archive Structure
+
+Each run is stored immediately in the archive folder:
+
+```
+ralph/archive/
+├── 2025-01-15_1430-ui-polish/
+│   ├── prd-ui-polish.json     # PRD copy (updated as tasks complete)
+│   └── progress.txt           # Iteration logs
+├── 2025-01-15_1645-auth-flow/
+│   ├── prd-auth-flow.json
+│   └── progress.txt
+```
+
+This means:
+- No separate "setup" step needed
+- Progress is saved from the start
+- Resuming is automatic
+- History is preserved
 
 ## File Structure
 
@@ -121,17 +141,26 @@ After setup, your project will have:
 ```
 your-project/
 ├── ralph/
-│   ├── ralph.sh              # Main loop script (symlink to source)
-│   ├── setup.sh              # Initialize new PRD (symlink to source)
+│   ├── ralph.sh              # Main script (symlink to source)
 │   ├── prompt.md             # Claude instructions (symlink to source)
+│   ├── progress.txt.template # Template (symlink to source)
 │   ├── ralph.config          # Project-specific test command
-│   ├── progress.txt          # Iteration logs
-│   ├── prd.json              # Current PRD (active)
-│   └── archive/              # Previous runs
+│   └── archive/              # All runs stored here
 ├── tasks/
 │   ├── prd-feature.md        # Human-readable PRD
 │   └── prd-feature.json      # Machine-readable PRD
 └── ...
+```
+
+## Command Options
+
+```bash
+./ralph/ralph.sh <prd-filepath> [max_iterations]
+
+# Examples:
+./ralph/ralph.sh tasks/prd-ui-polish.json       # 10 iterations (default)
+./ralph/ralph.sh tasks/prd-ui-polish.json 20    # Up to 20 iterations
+./ralph/ralph.sh tasks/prd-ui-polish.md         # Auto-uses .json if exists
 ```
 
 ## For Collaborators

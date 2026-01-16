@@ -2,19 +2,21 @@
 # Ralph for Claude Code - Autonomous AI agent loop
 # Adapted from https://github.com/snarktank/ralph
 #
-# Usage: ./ralph.sh [max_iterations]
+# Usage: ./ralph.sh <prd-filepath> [max_iterations]
+# Example: ./ralph.sh tasks/prd-ui-polish.json 10
 #
-# Before first run, set up your PRD:
-#   ./setup.sh ../tasks/prd-your-feature.json
+# Features:
+#   - Creates archive folder immediately (no separate setup step)
+#   - Auto-resumes incomplete runs when same PRD is passed again
+#   - Preserves original PRD filename in archive
 
 set -e
 
-MAX_ITERATIONS=${1:-10}
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PRD_FILE="$SCRIPT_DIR/prd.json"
-PROGRESS_FILE="$SCRIPT_DIR/progress.txt"
+ARCHIVE_DIR="$SCRIPT_DIR/archive"
 PROMPT_FILE="$SCRIPT_DIR/prompt.md"
 CONFIG_FILE="$SCRIPT_DIR/ralph.config"
+TEMPLATE_FILE="$SCRIPT_DIR/progress.txt.template"
 
 # Colors for output
 RED='\033[0;31m'
@@ -24,19 +26,147 @@ BLUE='\033[0;34m'
 GRAY='\033[0;90m'
 NC='\033[0m' # No Color
 
-# Load project config (for TEST_COMMAND substitution)
-load_config() {
-    if [ -f "$CONFIG_FILE" ]; then
-        source "$CONFIG_FILE"
-    else
-        echo -e "${YELLOW}Warning: ralph.config not found. Using default test command.${NC}"
-        TEST_COMMAND="echo 'No test command configured'"
-    fi
+# ═══════════════════════════════════════════════════════════════════════════════
+# HELPER FUNCTIONS
+# ═══════════════════════════════════════════════════════════════════════════════
+
+print_usage() {
+  echo "Usage: ./ralph.sh <prd-filepath> [max_iterations]"
+  echo ""
+  echo "Examples:"
+  echo "  ./ralph.sh tasks/prd-ui-polish.json       # 10 iterations (default)"
+  echo "  ./ralph.sh tasks/prd-ui-polish.json 20    # 20 iterations"
+  echo ""
+  echo "The script will:"
+  echo "  - Create an archive folder for the run"
+  echo "  - Auto-resume if an incomplete run exists for this feature"
 }
 
-load_config
+list_available_prds() {
+  echo "Available PRDs:"
+  local found=0
+  for dir in "$SCRIPT_DIR/../tasks" "./tasks" "."; do
+    if [ -d "$dir" ] && ls "$dir"/*.json 2>/dev/null | head -1 >/dev/null; then
+      ls -1 "$dir"/*.json 2>/dev/null | while read f; do
+        echo "  - $f"
+      done
+      found=1
+    fi
+  done
+  if [ $found -eq 0 ]; then
+    echo "  (none found)"
+  fi
+}
 
-# Function to format duration
+# Extract feature name from PRD JSON
+extract_feature_name() {
+  local prd_path="$1"
+  jq -r '.branchName // .featureName // "unknown"' "$prd_path"
+}
+
+# Sanitize feature name for folder naming
+sanitize_for_folder() {
+  local name="$1"
+  echo "$name" | sed 's|^feature/||' | sed 's|/|-|g' | sed 's|[^a-zA-Z0-9_-]|-|g'
+}
+
+# Validate PRD file
+validate_prd_file() {
+  local prd_path="$1"
+
+  # Handle .md files - suggest conversion
+  if [[ "$prd_path" == *.md ]]; then
+    local json_file="${prd_path%.md}.json"
+    if [ -f "$json_file" ]; then
+      echo -e "${YELLOW}Note: Using corresponding .json file${NC}"
+      echo -e "  ${BLUE}$prd_path${NC} -> ${GREEN}$json_file${NC}"
+      echo "$json_file"
+      return 0
+    else
+      echo -e "${RED}Error: Pass a .json file, not .md${NC}"
+      echo ""
+      echo "Run /convert-prd-to-json first:"
+      echo -e "  ${BLUE}/convert-prd-to-json $prd_path${NC}"
+      exit 1
+    fi
+  fi
+
+  # Check file exists
+  if [ ! -f "$prd_path" ]; then
+    echo -e "${RED}Error: PRD file not found: $prd_path${NC}"
+    echo ""
+    list_available_prds
+    exit 1
+  fi
+
+  # Validate JSON syntax
+  if ! jq empty "$prd_path" 2>/dev/null; then
+    echo -e "${RED}Error: Invalid JSON in: $prd_path${NC}"
+    echo ""
+    jq empty "$prd_path" 2>&1 | head -5
+    exit 1
+  fi
+
+  # Validate required fields
+  if ! jq -e '.tasks' "$prd_path" >/dev/null 2>&1; then
+    echo -e "${RED}Error: PRD missing 'tasks' array${NC}"
+    exit 1
+  fi
+
+  echo "$prd_path"
+}
+
+# Find incomplete run for given feature in archive
+find_incomplete_run() {
+  local folder_feature="$1"
+
+  # List folders matching pattern, most recent first (by timestamp prefix)
+  for folder in $(ls -dt "$ARCHIVE_DIR"/*-"$folder_feature" 2>/dev/null); do
+    if [ -d "$folder" ]; then
+      local prd=$(find "$folder" -maxdepth 1 -name "*.json" -type f 2>/dev/null | head -1)
+      if [ -n "$prd" ] && [ -f "$prd" ]; then
+        # Check if any task is incomplete
+        local incomplete=$(jq -e '.tasks[] | select(.passes == false)' "$prd" 2>/dev/null | head -1)
+        if [ -n "$incomplete" ]; then
+          echo "$folder"
+          return 0
+        fi
+      fi
+    fi
+  done
+  return 1
+}
+
+# Initialize progress.txt from template
+initialize_progress_file() {
+  local progress_path="$1"
+  local feature_name="$2"
+
+  if [ -f "$TEMPLATE_FILE" ]; then
+    cp "$TEMPLATE_FILE" "$progress_path"
+  else
+    cat > "$progress_path" << 'EOF'
+# Ralph Progress Log
+Feature: (will be updated)
+Started: (will be updated)
+
+## Codebase Patterns
+
+(Patterns discovered during implementation will be added here)
+
+---
+
+EOF
+  fi
+
+  # Update with feature info (macOS sed syntax)
+  sed -i '' "s|Feature: .*|Feature: $feature_name|" "$progress_path" 2>/dev/null || \
+    sed -i "s|Feature: .*|Feature: $feature_name|" "$progress_path"
+  sed -i '' "s|Started: .*|Started: $(date)|" "$progress_path" 2>/dev/null || \
+    sed -i "s|Started: .*|Started: $(date)|" "$progress_path"
+}
+
+# Format duration nicely
 format_duration() {
   local seconds=$1
   local minutes=$((seconds / 60))
@@ -48,8 +178,7 @@ format_duration() {
   fi
 }
 
-# Function to run heartbeat in background
-# Prints a dot every minute to show the process is alive
+# Heartbeat - shows process is alive
 start_heartbeat() {
   local task_id=$1
   (
@@ -71,61 +200,31 @@ stop_heartbeat() {
   fi
 }
 
-# Cleanup heartbeat on script exit
-trap stop_heartbeat EXIT
+# Load project config
+load_config() {
+  if [ -f "$CONFIG_FILE" ]; then
+    source "$CONFIG_FILE"
+  else
+    echo -e "${YELLOW}Warning: ralph.config not found. Using default test command.${NC}"
+    TEST_COMMAND="echo 'No test command configured'"
+  fi
+}
 
-echo -e "${BLUE}╔═══════════════════════════════════════════════════════╗${NC}"
-echo -e "${BLUE}║         Ralph for Claude Code                         ║${NC}"
-echo -e "${BLUE}╚═══════════════════════════════════════════════════════╝${NC}"
-echo ""
-
-# Check if PRD file exists
-if [ ! -f "$PRD_FILE" ]; then
-  echo -e "${RED}Error: No prd.json found in ralph/${NC}"
-  echo ""
-  echo "Run setup.sh first to configure a PRD:"
-  echo "  ./setup.sh ../tasks/prd-your-feature.json"
-  echo ""
-  echo "Available PRDs in tasks/:"
-  ls -1 "$SCRIPT_DIR/../tasks/"*.json 2>/dev/null | while read f; do
-    echo "  - $(basename "$f")"
-  done
-  exit 1
-fi
-
-# Check if prompt file exists
-if [ ! -f "$PROMPT_FILE" ]; then
-  echo -e "${RED}Error: prompt.md not found${NC}"
-  exit 1
-fi
-
-# Check if progress file exists
-if [ ! -f "$PROGRESS_FILE" ]; then
-  echo -e "${YELLOW}Warning: progress.txt not found, creating default${NC}"
-  cp "$SCRIPT_DIR/progress.txt.template" "$PROGRESS_FILE" 2>/dev/null || \
-    echo "# Ralph Progress Log" > "$PROGRESS_FILE"
-fi
-
-# Display config
-FEATURE=$(jq -r '.branchName // .featureName // "unknown"' "$PRD_FILE")
-echo -e "Feature: ${GREEN}$FEATURE${NC}"
-echo -e "Max Iterations: ${YELLOW}$MAX_ITERATIONS${NC}"
-echo ""
-
-# Function to count completed and total tasks
+# Task counting functions
 count_tasks() {
-  TOTAL=$(jq '.tasks | length' "$PRD_FILE")
-  COMPLETED=$(jq '[.tasks[] | select(.passes == true)] | length' "$PRD_FILE")
-  echo "$COMPLETED/$TOTAL"
+  local prd="$1"
+  local total=$(jq '.tasks | length' "$prd")
+  local completed=$(jq '[.tasks[] | select(.passes == true)] | length' "$prd")
+  echo "$completed/$total"
 }
 
-# Function to check if all tasks are complete
 all_complete() {
-  jq -e '.tasks | all(.passes == true)' "$PRD_FILE" > /dev/null 2>&1
+  local prd="$1"
+  jq -e '.tasks | all(.passes == true)' "$prd" > /dev/null 2>&1
 }
 
-# Function to get next task
 get_next_task() {
+  local prd="$1"
   jq -r '
     .tasks as $tasks |
     .tasks[] |
@@ -134,29 +233,137 @@ get_next_task() {
       (.dependsOn // []) | all(. as $dep | $tasks[] | select(.id == $dep) | .passes == true)
     ) |
     .id
-  ' "$PRD_FILE" | head -1
+  ' "$prd" | head -1
 }
 
+# Cleanup on exit
+cleanup_and_exit() {
+  stop_heartbeat
+  echo ""
+  echo -e "${YELLOW}Interrupted. Progress saved to:${NC}"
+  echo "  PRD: $ACTIVE_PRD_PATH"
+  echo "  Log: $ACTIVE_PROGRESS_PATH"
+  echo ""
+  echo "Resume with: ./ralph.sh $PRD_INPUT_PATH"
+  exit 130
+}
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# MAIN SCRIPT
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# Parse arguments
+PRD_INPUT_PATH="$1"
+MAX_ITERATIONS=${2:-10}
+
+# Check for help
+if [ "$PRD_INPUT_PATH" = "-h" ] || [ "$PRD_INPUT_PATH" = "--help" ]; then
+  print_usage
+  exit 0
+fi
+
+# Require PRD argument
+if [ -z "$PRD_INPUT_PATH" ]; then
+  echo -e "${RED}Error: No PRD file specified${NC}"
+  echo ""
+  print_usage
+  echo ""
+  list_available_prds
+  exit 1
+fi
+
+# Load config
+load_config
+
+# Validate PRD and potentially convert .md path to .json
+PRD_INPUT_PATH=$(validate_prd_file "$PRD_INPUT_PATH")
+
+# Extract feature name
+FEATURE_NAME=$(extract_feature_name "$PRD_INPUT_PATH")
+FOLDER_FEATURE=$(sanitize_for_folder "$FEATURE_NAME")
+
+echo -e "${BLUE}╔═══════════════════════════════════════════════════════╗${NC}"
+echo -e "${BLUE}║         Ralph for Claude Code                         ║${NC}"
+echo -e "${BLUE}╚═══════════════════════════════════════════════════════╝${NC}"
+echo ""
+
+# Ensure archive directory exists
+mkdir -p "$ARCHIVE_DIR"
+
+# Check for incomplete run to resume
+INCOMPLETE_RUN_FOLDER=$(find_incomplete_run "$FOLDER_FEATURE" || echo "")
+
+if [ -n "$INCOMPLETE_RUN_FOLDER" ]; then
+  # RESUME MODE
+  ACTIVE_FOLDER="$INCOMPLETE_RUN_FOLDER"
+  ACTIVE_PRD_PATH=$(find "$ACTIVE_FOLDER" -maxdepth 1 -name "*.json" -type f | head -1)
+  ACTIVE_PROGRESS_PATH="$ACTIVE_FOLDER/progress.txt"
+
+  COMPLETED=$(jq '[.tasks[] | select(.passes == true)] | length' "$ACTIVE_PRD_PATH")
+  TOTAL=$(jq '.tasks | length' "$ACTIVE_PRD_PATH")
+
+  echo -e "${YELLOW}Resuming incomplete run: $FEATURE_NAME ($COMPLETED/$TOTAL complete)${NC}"
+  echo -e "Archive: ${BLUE}$ACTIVE_FOLDER${NC}"
+else
+  # NEW RUN MODE
+  TIMESTAMP=$(date +%Y-%m-%d_%H%M%S)
+  ACTIVE_FOLDER="$ARCHIVE_DIR/$TIMESTAMP-$FOLDER_FEATURE"
+  mkdir -p "$ACTIVE_FOLDER"
+
+  # Copy PRD preserving original filename
+  ORIGINAL_FILENAME=$(basename "$PRD_INPUT_PATH")
+  ACTIVE_PRD_PATH="$ACTIVE_FOLDER/$ORIGINAL_FILENAME"
+  cp "$PRD_INPUT_PATH" "$ACTIVE_PRD_PATH"
+
+  # Initialize progress.txt
+  ACTIVE_PROGRESS_PATH="$ACTIVE_FOLDER/progress.txt"
+  initialize_progress_file "$ACTIVE_PROGRESS_PATH" "$FEATURE_NAME"
+
+  echo -e "${GREEN}Starting new run: $FEATURE_NAME${NC}"
+  echo -e "Archive: ${BLUE}$ACTIVE_FOLDER${NC}"
+
+  # Show task summary
+  echo ""
+  echo -e "${BLUE}Tasks:${NC}"
+  jq -r '.tasks[] | "  [\(if .passes then "x" else " " end)] \(.id): \(.title)"' "$ACTIVE_PRD_PATH"
+fi
+
+echo ""
+
+# Set up trap for graceful exit
+trap cleanup_and_exit SIGINT SIGTERM
+
+# Check if prompt file exists
+if [ ! -f "$PROMPT_FILE" ]; then
+  echo -e "${RED}Error: prompt.md not found${NC}"
+  exit 1
+fi
+
+# Display config
+echo -e "Feature: ${GREEN}$FEATURE_NAME${NC}"
+echo -e "Max Iterations: ${YELLOW}$MAX_ITERATIONS${NC}"
+echo ""
+
 # Check initial status
-INITIAL_STATUS=$(count_tasks)
+INITIAL_STATUS=$(count_tasks "$ACTIVE_PRD_PATH")
 echo -e "Task status: ${GREEN}$INITIAL_STATUS${NC} complete"
 
 # Check if already complete
-if all_complete; then
+if all_complete "$ACTIVE_PRD_PATH"; then
   echo ""
   echo -e "${GREEN}All tasks already complete!${NC}"
   exit 0
 fi
 
 # Show next task
-NEXT_TASK_ID=$(get_next_task)
+NEXT_TASK_ID=$(get_next_task "$ACTIVE_PRD_PATH")
 if [ -z "$NEXT_TASK_ID" ]; then
   echo ""
   echo -e "${RED}No eligible tasks found (check dependencies)${NC}"
   exit 1
 fi
 
-NEXT_TASK_TITLE=$(jq -r --arg id "$NEXT_TASK_ID" '.tasks[] | select(.id == $id) | .title' "$PRD_FILE")
+NEXT_TASK_TITLE=$(jq -r --arg id "$NEXT_TASK_ID" '.tasks[] | select(.id == $id) | .title' "$ACTIVE_PRD_PATH")
 echo -e "Next task: ${YELLOW}$NEXT_TASK_TITLE${NC}"
 echo ""
 
@@ -167,13 +374,13 @@ TOTAL_START_TIME=$(date +%s)
 for i in $(seq 1 $MAX_ITERATIONS); do
   echo ""
   echo -e "${BLUE}═══════════════════════════════════════════════════════${NC}"
-  echo -e "${BLUE}  Iteration $i of $MAX_ITERATIONS │ $(count_tasks) complete${NC}"
+  echo -e "${BLUE}  Iteration $i of $MAX_ITERATIONS │ $(count_tasks "$ACTIVE_PRD_PATH") complete${NC}"
   echo -e "${BLUE}═══════════════════════════════════════════════════════${NC}"
 
   # Get next eligible task
-  NEXT_TASK_ID=$(get_next_task)
+  NEXT_TASK_ID=$(get_next_task "$ACTIVE_PRD_PATH")
   if [ -z "$NEXT_TASK_ID" ]; then
-    if all_complete; then
+    if all_complete "$ACTIVE_PRD_PATH"; then
       echo -e "${GREEN}All tasks complete!${NC}"
       exit 0
     else
@@ -182,7 +389,7 @@ for i in $(seq 1 $MAX_ITERATIONS); do
     fi
   fi
 
-  NEXT_TASK_TITLE=$(jq -r --arg id "$NEXT_TASK_ID" '.tasks[] | select(.id == $id) | .title' "$PRD_FILE")
+  NEXT_TASK_TITLE=$(jq -r --arg id "$NEXT_TASK_ID" '.tasks[] | select(.id == $id) | .title' "$ACTIVE_PRD_PATH")
   echo ""
   echo -e "Task: ${YELLOW}[$NEXT_TASK_ID]${NC} $NEXT_TASK_TITLE"
   echo ""
@@ -192,8 +399,8 @@ for i in $(seq 1 $MAX_ITERATIONS); do
   FULL_PROMPT="$PROMPT_CONTENT
 
 ---
-PRD_FILE_PATH: $PRD_FILE
-PROGRESS_FILE_PATH: $PROGRESS_FILE
+PRD_FILE_PATH: $ACTIVE_PRD_PATH
+PROGRESS_FILE_PATH: $ACTIVE_PROGRESS_PATH
 PROJECT_ROOT: $SCRIPT_DIR/.."
 
   # Run Claude Code with timing and heartbeat
@@ -242,7 +449,7 @@ PROJECT_ROOT: $SCRIPT_DIR/.."
   rm -f "$OUTPUT_FILE"
 
   # Check completion via prd.json
-  if all_complete; then
+  if all_complete "$ACTIVE_PRD_PATH"; then
     TOTAL_END_TIME=$(date +%s)
     TOTAL_DURATION=$((TOTAL_END_TIME - TOTAL_START_TIME))
     TOTAL_FORMATTED=$(format_duration $TOTAL_DURATION)
@@ -255,7 +462,7 @@ PROJECT_ROOT: $SCRIPT_DIR/.."
 
   # Status update
   echo ""
-  echo -e "After iteration $i: ${GREEN}$(count_tasks)${NC} complete (took ${FORMATTED_DURATION})"
+  echo -e "After iteration $i: ${GREEN}$(count_tasks "$ACTIVE_PRD_PATH")${NC} complete (took ${FORMATTED_DURATION})"
 
   # Pause before next iteration
   if [ $i -lt $MAX_ITERATIONS ]; then
@@ -274,6 +481,7 @@ echo -e "${RED}║  Reached max iterations ($MAX_ITERATIONS)                    
 echo -e "${RED}║  Total time: $TOTAL_FORMATTED                              ${NC}"
 echo -e "${RED}╚═══════════════════════════════════════════════════════╝${NC}"
 echo ""
-echo -e "Final: ${YELLOW}$(count_tasks)${NC} complete"
-echo "Check progress.txt for details"
+echo -e "Final: ${YELLOW}$(count_tasks "$ACTIVE_PRD_PATH")${NC} complete"
+echo ""
+echo "Resume with: ./ralph.sh $PRD_INPUT_PATH"
 exit 1
