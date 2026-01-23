@@ -403,26 +403,100 @@ PRD_FILE_PATH: $ACTIVE_PRD_PATH
 PROGRESS_FILE_PATH: $ACTIVE_PROGRESS_PATH
 PROJECT_ROOT: $SCRIPT_DIR/.."
 
-  # Run Claude Code with timing and heartbeat
+  # Run Claude Code with timing, heartbeat, and stuck detection
   echo -e "${YELLOW}Starting Claude Code session...${NC}"
   echo ""
 
   ITERATION_START_TIME=$(date +%s)
   OUTPUT_FILE=$(mktemp)
+  RETRY_COUNT=0
+  MAX_RETRIES=3
+  SESSION_SUCCESS=false
+  STUCK_TIMEOUT=${STUCK_TIMEOUT:-900}  # 15 minutes default, configurable
 
-  # Start heartbeat
-  start_heartbeat "$NEXT_TASK_ID"
+  while [ $RETRY_COUNT -lt $MAX_RETRIES ] && [ "$SESSION_SUCCESS" = "false" ]; do
+    if [ $RETRY_COUNT -gt 0 ]; then
+      echo -e "${YELLOW}Retry attempt $RETRY_COUNT of $MAX_RETRIES...${NC}"
+      sleep 5
+    fi
 
-  if claude --dangerously-skip-permissions -p "$FULL_PROMPT" 2>&1 | tee "$OUTPUT_FILE"; then
-    echo ""
-    echo -e "${GREEN}Session completed${NC}"
-  else
-    echo ""
-    echo -e "${YELLOW}Session exited${NC}"
+    # Start heartbeat
+    start_heartbeat "$NEXT_TASK_ID"
+
+    # Run claude in background so we can monitor
+    claude --dangerously-skip-permissions -p "$FULL_PROMPT" > "$OUTPUT_FILE" 2>&1 &
+    CLAUDE_PID=$!
+
+    # Monitor for stuck patterns or timeout
+    STUCK_DETECTED=false
+    SECONDS_WAITING=0
+    while kill -0 $CLAUDE_PID 2>/dev/null; do
+      sleep 5
+      SECONDS_WAITING=$((SECONDS_WAITING + 5))
+
+      # Check for error patterns that cause hangs
+      if grep -qE "(Error: No messages returned|ECONNRESET|socket hang up)" "$OUTPUT_FILE" 2>/dev/null; then
+        echo ""
+        echo -e "${RED}Detected error pattern - restarting session...${NC}"
+        kill $CLAUDE_PID 2>/dev/null || true
+        wait $CLAUDE_PID 2>/dev/null || true
+        STUCK_DETECTED=true
+        break
+      fi
+
+      # Check for stuck timeout (no output progress)
+      if [ $SECONDS_WAITING -ge $STUCK_TIMEOUT ]; then
+        LAST_MOD=$(stat -f %m "$OUTPUT_FILE" 2>/dev/null || stat -c %Y "$OUTPUT_FILE" 2>/dev/null || echo "0")
+        NOW=$(date +%s)
+        IDLE_TIME=$((NOW - LAST_MOD))
+        if [ $IDLE_TIME -gt 300 ]; then  # No output for 5 minutes
+          echo ""
+          echo -e "${RED}Session appears stuck (no output for ${IDLE_TIME}s) - restarting...${NC}"
+          kill $CLAUDE_PID 2>/dev/null || true
+          wait $CLAUDE_PID 2>/dev/null || true
+          STUCK_DETECTED=true
+          break
+        fi
+      fi
+    done
+
+    # Stop heartbeat
+    stop_heartbeat
+
+    if [ "$STUCK_DETECTED" = "true" ]; then
+      RETRY_COUNT=$((RETRY_COUNT + 1))
+      > "$OUTPUT_FILE"  # Clear output file for retry
+    else
+      # Claude exited normally
+      wait $CLAUDE_PID
+      EXIT_CODE=$?
+      if [ $EXIT_CODE -eq 0 ]; then
+        echo ""
+        echo -e "${GREEN}Session completed${NC}"
+      else
+        echo ""
+        echo -e "${YELLOW}Session exited (code: $EXIT_CODE)${NC}"
+      fi
+      SESSION_SUCCESS=true
+      # Print captured output
+      cat "$OUTPUT_FILE"
+    fi
+  done
+
+  if [ "$SESSION_SUCCESS" = "false" ]; then
+    echo -e "${RED}Failed after $MAX_RETRIES retries. Moving to next iteration...${NC}"
+    # Append failure to progress log
+    echo "" >> "$ACTIVE_PROGRESS_PATH"
+    echo "## Iteration: $NEXT_TASK_ID (FAILED)" >> "$ACTIVE_PROGRESS_PATH"
+    echo "Date: $(date)" >> "$ACTIVE_PROGRESS_PATH"
+    echo "Task: $NEXT_TASK_TITLE" >> "$ACTIVE_PROGRESS_PATH"
+    echo "" >> "$ACTIVE_PROGRESS_PATH"
+    echo "### Failure Summary" >> "$ACTIVE_PROGRESS_PATH"
+    echo "- Claude session stuck/unresponsive after $MAX_RETRIES retry attempts" >> "$ACTIVE_PROGRESS_PATH"
+    echo "- Skipping to next iteration for fresh attempt" >> "$ACTIVE_PROGRESS_PATH"
+    echo "" >> "$ACTIVE_PROGRESS_PATH"
+    echo "---" >> "$ACTIVE_PROGRESS_PATH"
   fi
-
-  # Stop heartbeat
-  stop_heartbeat
 
   # Calculate duration
   ITERATION_END_TIME=$(date +%s)

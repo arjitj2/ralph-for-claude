@@ -52,10 +52,21 @@ Check `dependsOn` - if any dependencies have `"passes": false`, you cannot work 
 
 ### Step 5: Test
 
-Run the test suite to ensure:
-1. All existing tests still pass
-2. New tests (if required by acceptance criteria) pass
-3. The build succeeds
+1. **Write tests for new functionality** - If you added:
+   - New service methods → Write unit tests
+   - New model logic/computed properties → Write unit tests
+   - New algorithms → Write tests covering edge cases
+   - "This is UI code" is NOT an excuse - test the underlying logic
+
+2. **Run the test suite**:
+   - All existing tests must pass
+   - All new tests must pass
+   - Build must succeed
+
+3. **Skip tests ONLY if**:
+   - The task is pure verification (code already exists)
+   - The task only changes UI layout with no logic
+   - Acceptance criteria explicitly say "no tests required"
 
 {{TEST_COMMAND}}
 
