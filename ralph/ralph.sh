@@ -505,8 +505,8 @@ PROJECT_ROOT: $SCRIPT_DIR/.."
 
   echo -e "${GRAY}  Duration: ${FORMATTED_DURATION}${NC}"
 
-  # Check for completion signal
-  if grep -q "<promise>COMPLETE</promise>" "$OUTPUT_FILE" 2>/dev/null; then
+  # Check for completion signal (must be on its own line near the end, not just mentioned in text)
+  if tail -5 "$OUTPUT_FILE" 2>/dev/null | grep -qx "<promise>COMPLETE</promise>"; then
     TOTAL_END_TIME=$(date +%s)
     TOTAL_DURATION=$((TOTAL_END_TIME - TOTAL_START_TIME))
     TOTAL_FORMATTED=$(format_duration $TOTAL_DURATION)

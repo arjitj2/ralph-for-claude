@@ -115,13 +115,14 @@ Co-Authored-By: Claude <noreply@anthropic.com>
 After completing your ONE task:
 
 1. Check if ALL tasks in the PRD now have `"passes": true`
-2. If YES: Output exactly `<promise>COMPLETE</promise>` as the last line
+2. If YES: Output exactly `<promise>COMPLETE</promise>` **on its own line** as the last line
 3. If NO: **STOP IMMEDIATELY. End your response NOW.**
 
 ⚠️ Do NOT:
 - Look at what task is next
 - Start implementing another task
 - "Just quickly do one more thing"
+- **NEVER mention the completion token in explanatory text** - only output it when actually signaling completion
 
 The shell script handles the loop. Your job is ONE task only.
 
