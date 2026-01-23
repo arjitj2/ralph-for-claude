@@ -412,7 +412,6 @@ PROJECT_ROOT: $SCRIPT_DIR/.."
   RETRY_COUNT=0
   MAX_RETRIES=3
   SESSION_SUCCESS=false
-  STUCK_TIMEOUT=${STUCK_TIMEOUT:-900}  # 15 minutes default, configurable
 
   while [ $RETRY_COUNT -lt $MAX_RETRIES ] && [ "$SESSION_SUCCESS" = "false" ]; do
     if [ $RETRY_COUNT -gt 0 ]; then
@@ -423,16 +422,14 @@ PROJECT_ROOT: $SCRIPT_DIR/.."
     # Start heartbeat
     start_heartbeat "$NEXT_TASK_ID"
 
-    # Run claude in background so we can monitor
+    # Run claude in background so we can monitor for errors
     claude --dangerously-skip-permissions -p "$FULL_PROMPT" > "$OUTPUT_FILE" 2>&1 &
     CLAUDE_PID=$!
 
-    # Monitor for stuck patterns or timeout
+    # Monitor for error patterns that indicate a stuck/failed session
     STUCK_DETECTED=false
-    SECONDS_WAITING=0
     while kill -0 $CLAUDE_PID 2>/dev/null; do
       sleep 5
-      SECONDS_WAITING=$((SECONDS_WAITING + 5))
 
       # Check for error patterns that cause hangs
       if grep -qE "(Error: No messages returned|ECONNRESET|socket hang up)" "$OUTPUT_FILE" 2>/dev/null; then
@@ -442,21 +439,6 @@ PROJECT_ROOT: $SCRIPT_DIR/.."
         wait $CLAUDE_PID 2>/dev/null || true
         STUCK_DETECTED=true
         break
-      fi
-
-      # Check for stuck timeout (no output progress)
-      if [ $SECONDS_WAITING -ge $STUCK_TIMEOUT ]; then
-        LAST_MOD=$(stat -f %m "$OUTPUT_FILE" 2>/dev/null || stat -c %Y "$OUTPUT_FILE" 2>/dev/null || echo "0")
-        NOW=$(date +%s)
-        IDLE_TIME=$((NOW - LAST_MOD))
-        if [ $IDLE_TIME -gt 300 ]; then  # No output for 5 minutes
-          echo ""
-          echo -e "${RED}Session appears stuck (no output for ${IDLE_TIME}s) - restarting...${NC}"
-          kill $CLAUDE_PID 2>/dev/null || true
-          wait $CLAUDE_PID 2>/dev/null || true
-          STUCK_DETECTED=true
-          break
-        fi
       fi
     done
 
