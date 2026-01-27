@@ -21,14 +21,14 @@ Use the Read tool to get the full PRD content.
 ### Step 2: Extract User Stories
 
 For each user story in the PRD, create a task object with:
-- `id`: Use the story ID from the PRD (e.g., `US-001`, `US-002`) - these should already be in the markdown
+- `id`: Use the story ID from the PRD (e.g., `A3F2B1-001`, `A3F2B1-002`) - these should already be in the markdown
 - `title`: Short descriptive title
 - `description`: The full user story ("As a... I want... So that...")
 - `acceptanceCriteria`: Array of verifiable criteria from the PRD
 - `dependsOn`: Array of task IDs this depends on (empty for first tasks)
 - `passes`: Always `false` initially (not yet completed)
 
-**Important**: Preserve the `US-XXX` IDs from the PRD. Do NOT convert to kebab-case.
+**Important**: Preserve the `XXXXXX-NNN` hex prefix IDs from the PRD. Do NOT convert to kebab-case.
 
 ### Step 3: Determine Dependencies
 
@@ -50,7 +50,7 @@ Create the JSON file (same name as input, with `.json` extension) with this stru
   "description": "Brief description from PRD overview",
   "tasks": [
     {
-      "id": "US-001",
+      "id": "A3F2B1-001",
       "title": "Add User Model",
       "description": "As a developer, I want a user data model so that I can store user information",
       "acceptanceCriteria": [
@@ -61,14 +61,14 @@ Create the JSON file (same name as input, with `.json` extension) with this stru
       "passes": false
     },
     {
-      "id": "US-002",
+      "id": "A3F2B1-002",
       "title": "Add Login Form",
       "description": "As a user, I want a login form so that I can authenticate",
       "acceptanceCriteria": [
         "Form has email and password fields",
         "Submit button triggers authentication"
       ],
-      "dependsOn": ["US-001"],
+      "dependsOn": ["A3F2B1-001"],
       "passes": false
     }
   ]
@@ -127,12 +127,12 @@ NOT:
 Created tasks/prd-user-auth.json with 6 tasks:
 
 Dependency Graph:
-  US-001 Add User Model (no deps)
-  └── US-002 Add Auth Service (depends on: US-001)
-      └── US-003 Add Login Form (depends on: US-002)
-      └── US-004 Add Signup Form (depends on: US-002)
-          └── US-005 Add Auth Tests (depends on: US-003, US-004)
-              └── US-006 Add E2E Tests (depends on: US-005)
+  A3F2B1-001 Add User Model (no deps)
+  └── A3F2B1-002 Add Auth Service (depends on: A3F2B1-001)
+      └── A3F2B1-003 Add Login Form (depends on: A3F2B1-002)
+      └── A3F2B1-004 Add Signup Form (depends on: A3F2B1-002)
+          └── A3F2B1-005 Add Auth Tests (depends on: A3F2B1-003, A3F2B1-004)
+              └── A3F2B1-006 Add E2E Tests (depends on: A3F2B1-005)
 
 Ready for autonomous execution with Ralph.
 ```

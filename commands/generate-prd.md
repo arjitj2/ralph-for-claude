@@ -51,7 +51,7 @@ Brief description of the feature and the problem it solves.
 
 ## 3. User Stories
 
-### US-001: [Title]
+### XXXXXX-001: [Title]
 **As a** [user type]
 **I want** [capability]
 **So that** [benefit]
@@ -61,7 +61,7 @@ Brief description of the feature and the problem it solves.
 - [ ] Criterion 2 (verifiable)
 - [ ] Verify in browser/simulator if UI change
 
-### US-002: [Title]
+### XXXXXX-002: [Title]
 ...
 
 ## 4. Functional Requirements
@@ -105,18 +105,19 @@ Brief description of the feature and the problem it solves.
 - Only include Section 8 (Open Questions) if the user explicitly approves having unresolved questions
 - If the user says "it's okay to have open questions" or similar, you may include them
 
-### Story IDs Must Be Sequential
+### Story IDs Must Use Unique Hex Prefix
 
-Use the format `US-XXX` where XXX is a zero-padded number:
-- US-001, US-002, US-003, etc.
-- This makes it easy to reference stories in commits and discussions
-- The JSON task IDs should match: `"id": "US-001"`
+Generate a random 6-digit uppercase hexadecimal prefix for this PRD, then use sequential numbering:
+- First, generate a random hex like `A3F2B1` (use a different hex for each new PRD)
+- Then number sequentially: `A3F2B1-001`, `A3F2B1-002`, `A3F2B1-003`, etc.
+- This ensures unique IDs across all PRDs in the project
+- The JSON task IDs should match: `"id": "A3F2B1-001"`
 
 ### User Stories Must Be Right-Sized
 
 Each story should be completable in one focused session. If a story feels too big, break it down:
 - Bad: "Build the entire authentication system"
-- Good: "US-001: Add login form UI", "US-002: Add password validation", "US-003: Add session management"
+- Good: "A3F2B1-001: Add login form UI", "A3F2B1-002: Add password validation", "A3F2B1-003: Add session management"
 
 ### Acceptance Criteria Must Be Verifiable
 
