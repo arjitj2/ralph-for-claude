@@ -236,6 +236,13 @@ get_next_task() {
   ' "$prd" | head -1
 }
 
+# Check if a specific task is complete
+task_is_complete() {
+  local prd="$1"
+  local task_id="$2"
+  jq -e --arg id "$task_id" '.tasks[] | select(.id == $id) | .passes == true' "$prd" > /dev/null 2>&1
+}
+
 # Cleanup on exit
 cleanup_and_exit() {
   stop_heartbeat
@@ -433,8 +440,24 @@ PROJECT_ROOT: $SCRIPT_DIR/.."
 
       # Check for error patterns that cause hangs
       if grep -qE "(Error: No messages returned|ECONNRESET|socket hang up)" "$OUTPUT_FILE" 2>/dev/null; then
+        # Before killing, check if the current task was already completed
+        if task_is_complete "$ACTIVE_PRD_PATH" "$NEXT_TASK_ID"; then
+          echo ""
+          echo -e "${GREEN}Task completed despite error pattern in output - continuing...${NC}"
+          # Don't kill - let session finish naturally
+          continue
+        fi
+
+        # Also check if ALL tasks are now complete
+        if all_complete "$ACTIVE_PRD_PATH"; then
+          echo ""
+          echo -e "${GREEN}All tasks complete - allowing session to finish...${NC}"
+          continue
+        fi
+
+        # Only now kill the session - task is incomplete and error pattern detected
         echo ""
-        echo -e "${RED}Detected error pattern - restarting session...${NC}"
+        echo -e "${RED}Detected error pattern and task incomplete - restarting session...${NC}"
         kill $CLAUDE_PID 2>/dev/null || true
         wait $CLAUDE_PID 2>/dev/null || true
         STUCK_DETECTED=true
